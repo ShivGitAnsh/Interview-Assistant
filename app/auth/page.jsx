@@ -12,11 +12,15 @@ function Login() {
   const [password, setPassword] = useState('');
   const router = useRouter();
 
+  const siteUrl = process.env.NEXT_PUBLIC_VERCEL_URL
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+      : window.location.origin;
+
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard` 
+        redirectTo: `${siteUrl}/dashboard` 
       }
     });
     if (error) {
