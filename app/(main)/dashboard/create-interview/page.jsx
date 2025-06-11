@@ -19,7 +19,6 @@ function CreateInterview() {
         ...prev,
         [field] : value, 
        })) 
-       console.log("FormData", formData)
     }
 
     const onGoToNext=()=> {

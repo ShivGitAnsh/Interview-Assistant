@@ -4,8 +4,8 @@ import InterviewHeader from '../_components/InterviewHeader'
 import Image from 'next/image'
 import { CiClock1, CiVideoOn } from 'react-icons/ci'
 import { Input } from '@/components/ui/input'
-import { IoInformation } from 'react-icons/io5'
 import { Button } from '@/components/ui/button'
+import { IoMdInformationCircleOutline } from "react-icons/io";
 import { useParams } from 'next/navigation'
 import { supabase } from '@/services/supabaseClient'
 import { toast } from 'sonner'
@@ -16,7 +16,6 @@ import { FiLoader } from 'react-icons/fi'
 function Interview() {
 
     const { interview_id } = useParams();
-    console.log(interview_id)
     const [interviewData, setInterviewData] = useState();
     const [userName, setUserName] = useState();
     const [loading, setLoading] = useState(false);
@@ -41,7 +40,6 @@ function Interview() {
                 toast('Incorrect Interview Link')
                 return;
             }
-            // console.log(interviews);
         } catch (e) {
             setLoading(false);
             toast('Incorrect Interview Link')
@@ -53,7 +51,6 @@ function Interview() {
             .from('interviews')
             .select('*')
             .eq('interview_id', interview_id);
-            // console.log(interviews[0]);
             setInterviewInfo({
                 userName:userName,
                 userEmail:userEmail,
@@ -71,19 +68,19 @@ function Interview() {
 
                 <Image src={'/interview.png'} alt='interview' width={500} height={500} className='w-[280px] my-6' />
 
-                <h2 className='font-bold text-xl mt-3'>{interviewData?.jobPosition}</h2>
+                <h2 className='font-bold text-xl mt-2'>{interviewData?.jobPosition}</h2>
                 <h2 className='flex gap-2 items-center text-gray-500 mt-3'><CiClock1 className='h-4 w-4' />{interviewData?.Duration}</h2>
 
                 <div className='w-full'>
                     <h2>Enter Your Full Name</h2>
                     <Input placeholder='e.g. John Doe' onChange={(event) => setUserName(event.target.value)} />
                 </div>
-                <div className='w-full'>
+                <div className='w-full mt-2'>
                     <h2>Enter Your Email</h2>
                     <Input placeholder='john@email.com' onChange={(event) => setUserEmail(event.target.value)} />
                 </div>
                 <div className='p-3 bg-blue-100 flex gap-4 rounded-lg mt-3'>
-                    <IoInformation className='text-primary' />
+                    <IoMdInformationCircleOutline className='text-primary' />
                     <div>
                         <h2 className='font-bold'>Before you begin</h2>
                         <ul>

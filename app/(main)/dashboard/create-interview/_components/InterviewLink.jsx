@@ -45,7 +45,7 @@ function InterviewLink({ interview_id, formData }) {
                 </div>
 
             </div>
-            <div className='mt-7 bg-white p-5 rounded-lg w-full'>
+            {/* <div className='mt-7 bg-white p-5 rounded-lg w-full'>
                 <h2>Share Via</h2>
                 <div className='flex gap-3 mt-2 w-full overflow-hidden'>
                     <Button variant='outline' className='flex-1 min-w-0'><CiMail /> Email</Button>
@@ -53,7 +53,7 @@ function InterviewLink({ interview_id, formData }) {
                     <Button variant='outline' className='flex-1 min-w-0'><CiMail /> Whatsapp</Button>
                 </div>
 
-            </div>
+            </div> */}
 
             <div className='flex w-full gap-5 justify-between mt-6'>
                 <Link href={'/dashboard'}>

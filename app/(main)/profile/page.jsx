@@ -1,9 +1,8 @@
 'use client';
 
 import { supabase } from '@/services/supabaseClient';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useUser } from '@/app/provider';
-import Image from 'next/image';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,102 +10,175 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-import ProtectedRoute from '../_components/ProtectedRoute';
 
 export default function ProfilePage() {
   const { user } = useUser();
   const [profileData, setProfileData] = useState({
     name: '',
+    email: '',
     picture: '',
     role: '',
     phone: '',
-    skills: [],
+    skills: '',
   });
   const [imageFile, setImageFile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
   const fetchProfile = async () => {
-    setLoading(true);
-    const userId = user?.id;
+    try {
+      setLoading(true);
+      const userId = user?.id;
 
-    const { data: userData } = await supabase
+      if (!userId) return;
+
+      // Get user data from Users table
+      const { data: userData, error: userError } = await supabase
+        .from('Users')
+        .select('name, email, picture')
+        .eq('id', userId)
+        .single();
+
+      if (userError) throw userError;
+
+      // Get profile data using the user's email
+      const { data: profileInfo, error: profileError } = await supabase
+        .from('profile')
+        .select('role, phone, skills')
+        .eq('email', userData?.email)
+        .single();
+
+      // Ignore "No rows found" error (code PGRST116)
+      if (profileError && profileError.code !== 'PGRST116') {
+        throw profileError;
+      }
+
+      setProfileData({
+        name: userData?.name || '',
+        email: userData?.email || '',
+        picture: userData?.picture || '',
+        role: profileInfo?.role || '',
+        phone: profileInfo?.phone || '',
+        skills: profileInfo?.skills || '',
+      });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageUpload = async (file) => {
+    try {
+      setUploading(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+ const handleUpdate = useCallback(async () => {
+  try {
+    setUploading(true);
+    const userId = user?.id;
+    if (!userId) return;
+
+    // Get current user email first
+    const { data: currentUserData, error: userError } = await supabase
       .from('Users')
-      .select('name, picture')
+      .select('email')
       .eq('id', userId)
       .single();
 
-    const { data: profileInfo } = await supabase
-      .from('profile')
-      .select('role, phone, skills')
-      .eq('user_id', userId)
-      .single();
+    if (userError) throw userError;
 
-    setProfileData({
-      name: userData?.name || '',
-      picture: userData?.picture || '',
-      role: profileInfo?.role || '',
-      phone: profileInfo?.phone || '',
-      skills: profileInfo?.skills || [],
-    });
+    const currentEmail = currentUserData?.email;
 
-    setLoading(false);
-  };
-
-  const handleImageUpload = async () => {
-    if (!imageFile) return null;
-    setUploading(true);
-    const fileExt = imageFile.name.split('.').pop();
-    const fileName = `${uuidv4()}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, imageFile, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (uploadError) {
-      console.error('Image upload failed:', uploadError.message);
-      setUploading(false);
-      return null;
+    // Upload new image if selected
+    let imageUrl = profileData.picture;
+    if (imageFile) {
+      const newImageUrl = await handleImageUpload(imageFile);
+      if (newImageUrl) imageUrl = newImageUrl;
     }
 
-    const { data: publicUrlData } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(filePath);
+    // First update the Users table
+    const { error: userUpdateError } = await supabase
+      .from('Users')
+      .update({
+        name: profileData.name,
+        picture: imageUrl,
+      })
+      .eq('id', userId);
 
-    setUploading(false);
-    return publicUrlData?.publicUrl || null;
-  };
+    if (userUpdateError) throw userUpdateError;
 
-  const handleUpdate = async () => {
-    const userId = user?.id;
-    const newImageUrl = await handleImageUpload();
+    // Then upsert the profile data
+    const { error: profileUpsertError } = await supabase
+      .from('profile')
+      .upsert(
+        {
+          email: currentEmail,
+          role: profileData.role,
+          phone: profileData.phone,
+          skills: profileData.skills,
+        },
+        { onConflict: 'email' } // Explicitly specify the conflict resolution
+      );
 
-    const updatedPicture = newImageUrl || profileData.picture;
-
-    await supabase.from('Users').update({
-      name: profileData.name,
-      picture: updatedPicture,
-    }).eq('id', userId);
-
-    await supabase.from('profile').upsert({
-      user_id: userId,
-      role: profileData.role,
-      phone: profileData.phone,
-      skills: profileData.skills,
-    });
+    if (profileUpsertError) throw profileUpsertError;
 
     setEditing(false);
-    fetchProfile();
-  };
+    setImageFile(null);
+    setPreviewUrl(null);
+    await fetchProfile();
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    // You might want to add user feedback here (e.g., toast notification)
+  } finally {
+    setUploading(false);
+  }
+}, [user?.id, profileData, imageFile, handleImageUpload, fetchProfile]);
+
 
   useEffect(() => {
     if (user?.id) fetchProfile();
   }, [user]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-screen">
@@ -115,7 +187,6 @@ export default function ProfilePage() {
   );
 
   return (
-
     <div className="p-6 min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <Card className="max-w-2xl mx-auto">
         <CardHeader className="border-b">
@@ -123,25 +194,25 @@ export default function ProfilePage() {
             <CardTitle className="text-2xl font-bold">Your Profile</CardTitle>
             <div className="relative">
               <Avatar className="w-16 h-16">
-                <AvatarImage src={profileData.picture} />
+                <AvatarImage src={previewUrl || profileData.picture} />
                 <AvatarFallback className="text-xl">
                   {profileData.name?.charAt(0) || 'U'}
                 </AvatarFallback>
               </Avatar>
               {editing && (
-                  <Button
+                <Button
                   variant="outline"
                   size="sm"
                   className="absolute -bottom-2 -right-2 rounded-full p-2 h-8 w-8"
                   onClick={() => document.getElementById('fileInput').click()}
-                  >
+                >
                   <input
                     id="fileInput"
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => setImageFile(e.target.files[0])}
-                    />
+                    onChange={handleFileChange}
+                  />
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 5v14M5 12h14" />
                   </svg>
@@ -155,34 +226,41 @@ export default function ProfilePage() {
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
             {editing ? (
-                <Input
+              <Input
                 id="name"
                 value={profileData.name}
                 placeholder="e.g. John Doe"
                 onChange={(e) =>
-                    setProfileData({ ...profileData, name: e.target.value })
+                  setProfileData({ ...profileData, name: e.target.value })
                 }
-                />
+              />
             ) : (
-                <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {profileData.name || "Not provided"}
               </p>
             )}
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <p className="text-sm text-muted-foreground">
+              {profileData.email || "Not provided"}
+            </p>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="role">Role</Label>
             {editing ? (
-                <Input
+              <Input
                 id="role"
                 value={profileData.role}
                 placeholder="e.g. Full Stack Developer"
                 onChange={(e) =>
-                    setProfileData({ ...profileData, role: e.target.value })
+                  setProfileData({ ...profileData, role: e.target.value })
                 }
-                />
+              />
             ) : (
-                <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {profileData.role || "Not provided"}
               </p>
             )}
@@ -191,16 +269,16 @@ export default function ProfilePage() {
           <div className="space-y-2">
             <Label htmlFor="phone">Phone</Label>
             {editing ? (
-                <Input
+              <Input
                 id="phone"
                 value={profileData.phone}
                 placeholder="e.g. +1 (555) 123-4567"
                 onChange={(e) =>
-                    setProfileData({ ...profileData, phone: e.target.value })
+                  setProfileData({ ...profileData, phone: e.target.value })
                 }
-                />
+              />
             ) : (
-                <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {profileData.phone || "Not provided"}
               </p>
             )}
@@ -209,20 +287,20 @@ export default function ProfilePage() {
           <div className="space-y-2">
             <Label htmlFor="skills">Skills</Label>
             {editing ? (
-                <Input
+              <Input
                 id="skills"
-                value={profileData.skills.join(', ')}
+                value={profileData.skills}
                 placeholder="e.g. React, Node.js, TypeScript"
                 onChange={(e) =>
-                    setProfileData({
-                        ...profileData,
-                        skills: e.target.value.split(',').map((s) => s.trim()),
-                    })
+                  setProfileData({
+                    ...profileData,
+                    skills: e.target.value,
+                  })
                 }
-                />
+              />
             ) : (
-                <p className="text-sm text-muted-foreground">
-                {profileData.skills.length > 0 ? profileData.skills.join(', ') : "Not provided"}
+              <p className="text-sm text-muted-foreground">
+                {profileData.skills || "Not provided"}
               </p>
             )}
           </div>
@@ -230,23 +308,31 @@ export default function ProfilePage() {
 
         <CardFooter className="flex justify-end gap-2 pt-6 border-t">
           {editing ? (
-              <>
-              <Button variant="outline" onClick={() => setEditing(false)}>
+            <>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setEditing(false);
+                  setImageFile(null);
+                  setPreviewUrl(null);
+                }}
+                disabled={uploading}
+              >
                 Cancel
               </Button>
               <Button onClick={handleUpdate} disabled={uploading}>
                 {uploading ? (
-                    <>
+                  <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Saving...
                   </>
                 ) : (
-                    "Save Changes"
+                  "Save Changes"
                 )}
               </Button>
             </>
           ) : (
-              <Button onClick={() => setEditing(true)}>
+            <Button onClick={() => setEditing(true)}>
               Edit Profile
             </Button>
           )}

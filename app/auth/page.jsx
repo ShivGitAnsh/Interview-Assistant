@@ -16,7 +16,7 @@ function Login() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${location.origin}/dashboard` // Redirects after Google login
+        redirectTo: `${process.env.NEXT_PUBLIC_HOST_URL}/dashboard` // Redirects after Google login
       }
     });
     if (error) {

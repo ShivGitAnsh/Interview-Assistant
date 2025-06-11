@@ -20,8 +20,6 @@ function AllInterviews() {
             .select('*')
             .eq('userEmail', user?.email)
             .order('id', {ascending:false});
-
-            console.log(interviews);
             setInterviewList(interviews);
     }
 

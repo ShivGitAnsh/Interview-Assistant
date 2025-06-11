@@ -36,8 +36,6 @@ function QuestionList({ formData, onCreateLink }) {
         FINAL_CONTENT = jsonMatch[1].trim();
       }
 
-      // console.log("Extracted JSON String:\n", FINAL_CONTENT);
-
       let parsed;
       try {
         parsed = JSON.parse(FINAL_CONTENT);
@@ -51,8 +49,6 @@ function QuestionList({ formData, onCreateLink }) {
         toast("Oops! No valid questions received.");
         return;
       }
-
-      console.log("Parsed Questions:", parsed.interviewQuestions);
       setQuestionList(parsed.interviewQuestions);
 
     } catch (e) {
@@ -80,7 +76,7 @@ function QuestionList({ formData, onCreateLink }) {
       .select();
     setSaveLoading(false);
     onCreateLink(interview_id)
-    // console.log(data);
+
   }
   return (
     <div>

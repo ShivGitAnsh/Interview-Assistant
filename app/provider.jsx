@@ -33,7 +33,6 @@ function Provider({ children }) {
                     picture: user?.user_metadata?.picture,
                     
                 }])
-                console.log(data);
                 setUser(data);
                 return;
             }

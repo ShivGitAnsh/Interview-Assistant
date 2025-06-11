@@ -31,7 +31,6 @@ function InterviewDetail() {
 
       if (error) throw error;
       
-      console.log(data)
       // Data will be a single object when using .single()
       setInterviewDetail(data || null);
     } catch (error) {

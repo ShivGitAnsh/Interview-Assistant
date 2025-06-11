@@ -112,8 +112,6 @@ function StartInterview() {
         },
       };
 
-      console.log("Starting call with options:", assistantOptions);
-
       // Set up event listeners before starting the call
       setupVapiListeners(vapi);
 
@@ -131,22 +129,18 @@ function StartInterview() {
     if (!vapiClient) return;
 
     vapiClient.on("call-start", () => {
-      console.log("Call has Started");
       toast.success('Call Connected....');
     });
 
     vapiClient.on("speech-start", () => {
-      console.log("Assistant speech has started.");
       setActiveUser(false);
     });
 
     vapiClient.on("speech-end", () => {
-      console.log("Assistant speech has ended.");
       setActiveUser(true);
     });
 
     vapiClient.on("message", (message) => {
-      console.log("Message received:", message);
       if (message?.conversation) {
         setConversation(message.conversation);
         conversationRef.current = message.conversation;
@@ -154,7 +148,6 @@ function StartInterview() {
     });
 
     vapiClient.on("call-end", () => {
-      console.log("Call has Ended");
       toast.success('Interview Ended');
       GenerateFeedback();
     });
@@ -185,7 +178,7 @@ function StartInterview() {
         jobPosition: interviewInfo?.interviewData?.jobPosition
       });
 
-      console.log("Raw API response:", result.data);
+      
 
       // Extract JSON from response (more robust handling)
       let content = result.data.content;
@@ -274,7 +267,6 @@ function StartInterview() {
         </div>
       </div>
       <div className='flex items-center gap-5 justify-center mt-7'>
-        <MdMic className='h-12 w-12 p-3 bg-gray-500 text-white rounded-full cursor-pointer' />
         <AlertConfirmation stopInterview={stopInterview}>
           {!loading ? (
             <CiPhone className='h-12 w-12 p-3 bg-red-500 text-white rounded-full cursor-pointer' />

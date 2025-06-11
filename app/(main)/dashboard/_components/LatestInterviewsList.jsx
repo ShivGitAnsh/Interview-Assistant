@@ -24,8 +24,6 @@ function LatestInterviewsList() {
             .eq('userEmail', user?.email)
             .order('id', {ascending:false})
             .limit(6);
-
-            console.log(interviews);
             setInterviewList(interviews);
     }
 
