@@ -13,6 +13,7 @@ function Login() {
   const router = useRouter();
 
   const signInWithGoogle = async () => {
+    console.log("Redirecting to:", `${process.env.NEXT_PUBLIC_HOST_URL}/dashboard`);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
