@@ -16,10 +16,10 @@ function QuestionList({ formData, onCreateLink }) {
   const [saveLoading, setSaveLoading] = useState(false);
 
   useEffect(() => {
-    if (formData) {
+    if (formData && user) {
       GenerateQuestionList();
     }
-  }, [formData]);
+  }, [formData, user]);
 
   const GenerateQuestionList = async () => {
     setLoading(true);
