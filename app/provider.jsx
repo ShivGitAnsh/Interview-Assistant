@@ -16,28 +16,34 @@ function Provider({ children }) {
        CreateNewUser()
     },[])
     
-    const CreateNewUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
-
-    if (!user) return;
-
-    const { data: Users, error } = await supabase
-        .from('Users')
-        .select("*")
-        .eq('email', user.email);
-
-    if (Users?.length === 0) {
-        const { data, error } = await supabase.from('Users').insert([{
-            name: user.user_metadata?.name,
-            email: user.email,
-            picture: user.user_metadata?.picture,
-        }]);
-        setUser(data);
-    } else {
-        setUser(Users[0]);
+    const CreateNewUser = () => {
+        supabase.auth.getUser().then(async({ data : { user } }) => {
+            //Check if the user already exists
+            let { data: Users, error } = await supabase
+            .from('Users')
+            .select("*").eq('email', user?.email);
+            
+            // console.log(Users)
+            
+            //if not, create a new user
+            if(Users?.length == 0){
+                
+                const {data, error} =  await supabase.from('Users').insert([{
+                    name : user?.user_metadata?.name,
+                    email : user?.email,
+                    picture: user?.user_metadata?.picture,
+                    
+                }])
+                setUser(data);
+                return;
+            }
+            setUser(Users[0]);
+            
+        })
+        
     }
-};
+
+
     return (
         <UserDetailContext.Provider value={{user, setUser}} >
         <div>{children}</div>
