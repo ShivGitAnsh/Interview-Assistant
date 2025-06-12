@@ -35,7 +35,7 @@ function QuestionList({ formData, onCreateLink }) {
       if (jsonMatch && jsonMatch[1]) {
         FINAL_CONTENT = jsonMatch[1].trim();
       }
-
+       console.log(FINAL_CONTENT);
       let parsed;
       try {
         parsed = JSON.parse(FINAL_CONTENT);
@@ -44,7 +44,7 @@ function QuestionList({ formData, onCreateLink }) {
         toast("AI returned invalid question format. Please try again.");
         return;
       }
-
+       
       if (!parsed?.interviewQuestions || !Array.isArray(parsed.interviewQuestions)) {
         toast("Oops! No valid questions received.");
         return;
