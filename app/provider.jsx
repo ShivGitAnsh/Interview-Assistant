@@ -1,59 +1,84 @@
-"use client"
-import { UserDetailContext } from '@/context/UserDetailContext';
-import { supabase } from '@/services/supabaseClient'
-// import { User } from 'lucide-react';
-import React, { useContext, useEffect, useState } from 'react'
+"use client";
+import { UserDetailContext } from "@/context/UserDetailContext";
+import { supabase } from "@/services/supabaseClient";
+import React, { useContext, useEffect, useState } from "react";
 
-console.log('🛎️ Provider file loaded');
+export default function Provider({ children }) {
+  const [user, setUser] = useState(null);
+  const [userLoading, setUserLoading] = useState(true);
 
+  useEffect(() => {
+    let listener;
 
-function Provider({ children }) {
-    
-    const [user, setUser] = useState(null);
-    const [userLoading, setUserLoading] = useState(true); 
+    async function init() {
+      // 1) Read the current session (will parse OAuth callback if present)
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) console.warn("Failed to load session:", error.message);
 
-    useEffect(() => {
-       CreateNewUser()
-    },[])
-    
-    const CreateNewUser = () => {
-        supabase.auth.getUser().then(async({ data : { user } }) => {
-            //Check if the user already exists
-            let { data: Users, error } = await supabase
-            .from('Users')
-            .select("*").eq('email', user?.email);
-            
-            // console.log(Users)
-            
-            //if not, create a new user
-            if(Users?.length == 0){
-                
-                const {data, error} =  await supabase.from('Users').insert([{
-                    name : user?.user_metadata?.name,
-                    email : user?.email,
-                    picture: user?.user_metadata?.picture,
-                    
-                }])
-                setUser(data);
-                return;
-            }
-            setUser(Users[0]);
-            
-        })
-        
+      await syncUserRow(session?.user);
+
+      // 2) Listen for any future sign-in/sign-out
+      listener = supabase.auth.onAuthStateChange((_, newSession) => {
+        syncUserRow(newSession?.user);
+      });
     }
 
+    init();
 
-    return (
-        <UserDetailContext.Provider value={{user, setUser}} >
-        <div>{children}</div>
-        </UserDetailContext.Provider>
-    )
+    return () => {
+      if (listener?.subscription) listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Sync the Supabase auth user → your Users table
+  async function syncUserRow(authUser) {
+    if (!authUser) {
+      setUser(null);
+      setUserLoading(false);
+      return;
+    }
+
+    try {
+      const email = authUser.email;
+      const { data: rows } = await supabase
+        .from("Users")
+        .select("*")
+        .eq("email", email)
+        .limit(1);
+
+      let current = rows?.[0];
+      if (!current) {
+        const { data: inserted, error: insertError } = await supabase
+          .from("Users")
+          .insert([{
+            name: authUser.user_metadata?.name,
+            email,
+            picture: authUser.user_metadata?.picture,
+          }])
+          .select()
+          .single();
+
+        if (insertError) console.error("Insert error:", insertError.message);
+        current = inserted;
+      }
+
+      setUser(current);
+    } catch (err) {
+      console.error("Error syncing user row:", err.message);
+    } finally {
+      setUserLoading(false);
+    }
+  }
+
+  return (
+    <UserDetailContext.Provider value={{ user, setUser, userLoading }}>
+      {children}
+    </UserDetailContext.Provider>
+  );
 }
 
-export default Provider
-
-export const useUser = () =>{
-    const context = useContext(UserDetailContext);
-    return context;
-}
+export const useUser = () => {
+  const ctx = useContext(UserDetailContext);
+  if (!ctx) throw new Error("useUser must be used within Provider");
+  return ctx;
+};
