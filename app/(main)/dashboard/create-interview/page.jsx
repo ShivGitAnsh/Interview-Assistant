@@ -14,6 +14,7 @@ function CreateInterview() {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState();
     const [interviewId, setInterviewId] = useState();
+    const {user} = useUser();
     const onHandleInputChange = (field, value) => {
        setFormData(prev => ({
         ...prev,
@@ -22,6 +23,10 @@ function CreateInterview() {
     }
 
     const onGoToNext=()=> {
+      if(user?.credits <= 0){
+        toast('You have no credits left! Please purchase credits to continue.');
+        return;
+      }
       if(!formData?.jobPosition|| !formData?.jobDescription || !formData?.Duration || !formData?.type){
         toast('Please Enter all details!')
         return;

@@ -8,6 +8,7 @@ import { CiUser } from "react-icons/ci";
 import { FaBriefcase } from "react-icons/fa";
 import { IoExtensionPuzzleOutline } from "react-icons/io5";
 import { RiTeamFill } from "react-icons/ri";
+import { MdCreditCard } from 'react-icons/md';
 
 export const SideBarOptions = [
     {
@@ -29,6 +30,11 @@ export const SideBarOptions = [
         name: "Profile",
         icon: CgProfile,
         path: "/profile",
+    },
+    {
+        name: "Billing",
+        icon: MdCreditCard,
+        path: "/billing",
     },
     
 ]
