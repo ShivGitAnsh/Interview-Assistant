@@ -8,6 +8,7 @@ import QuestionList from './_components/QuestionList';
 import { toast } from 'sonner';
 import InterviewLink from './_components/InterviewLink';
 import ProtectedRoute from '../../_components/ProtectedRoute';
+import { useUser } from '@/app/provider'
 
 function CreateInterview() {
     const router = useRouter();
